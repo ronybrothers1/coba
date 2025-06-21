@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Perangkat Desa</title>
+    
+    <style>
+        /* Pengaturan Dasar dan Tema Warna */
+        :root {
+            --primary-color: #0056b3; /* Biru Profesional */
+            --secondary-color: #f8f9fa; /* Latar Belakang Abu-abu Muda */
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --white-color: #ffffff;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: var(--white-color);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        /* Gaya untuk Form Absensi */
+        .attendance-form {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+
+        @media (min-width: 600px) {
+            .attendance-form {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box; /* Penting untuk padding */
+        }
+        
+        .form-group input[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        
+        /* Gaya untuk Kamera dan Selfie */
+        .camera-section {
+            grid-column: 1 / -1; /* Mengambil lebar penuh */
+            border: 1px dashed var(--primary-color);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        #video-preview {
+            width: 100%;
+            max-width: 320px;
+            height: auto;
+            border-radius: 5px;
+            background-color: #000;
+        }
+        
+        #selfie-preview {
+            display: none;
+            margin-top: 10px;
+            max-width: 150px;
+            border-radius: 5px;
+            border: 2px solid var(--success-color);
+        }
+
+        /* Kanvas untuk mengambil gambar (disembunyikan) */
+        #canvas {
+            display: none;
+        }
+
+        /* Gaya Tombol */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        
+        .btn-main {
+            background-color: var(--primary-color);
+            color: var(--white-color);
+            width: 100%;
+            grid-column: 1 / -1; /* Mengambil lebar penuh */
+        }
+        .btn-main:hover {
+            background-color: #004494;
+        }
+        
+        .btn-secondary {
+            background-color: var(--success-color);
+            color: white;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover {
+            background-color: #218838;
+        }
+
+        .btn-print {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-print:hover {
+            background-color: #5a6268;
+        }
+        
+        /* Gaya untuk Rekap Absensi */
+        .recap-section {
+            margin-top: 40px;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-controls select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+        
+        .table-container {
+            overflow-x: auto; /* Agar bisa scroll horizontal di mobile */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: var(--white-color);
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--secondary-color);
+        }
+        
+        .status-hadir { color: #155724; font-weight: bold; }
+        .status-izin { color: #856404; font-weight: bold; }
+        .status-sakit { color: #721c24; font-weight: bold; }
+        .status-alpha { color: #721c24; font-weight: bold; }
+
+        .recap-photo {
+            max-width: 80px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .recap-photo:hover {
+            transform: scale(2.5);
+        }
+
+        /* Notifikasi */
+        .notification {
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+            display: none; /* Disembunyikan secara default */
+            font-weight: bold;
+            text-align: center;
+        }
+        .notification.error {
+            background-color: #f8d7da;
+            color: var(--error-color);
+        }
+
+        /* Gaya Cetak */
+        @media print {
+            body {
+                padding: 0;
+                background-color: var(--white-color);
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .attendance-form, .recap-section h2, .filter-controls, .btn, .notification, h1 {
+                display: none;
+            }
+            .recap-section {
+                margin-top: 0;
+            }
+            table, th, td {
+                border: 1px solid #000;
+            }
+            th {
+                background-color: #ddd !important; /* !important untuk menimpa gaya inline */
+                color: #000 !important;
+                -webkit-print-color-adjust: exact; /* Memastikan warna latar belakang tercetak */
+                print-color-adjust: exact;
+            }
+            .recap-photo {
+                max-width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Sistem Absensi Perangkat Desa</h1>
+
+        <section class="attendance-form-section">
+            <h2>Form Absensi</h2>
+            <form id="attendance-form" class="attendance-form">
+                <div class="form-group">
+                    <label for="nama">Nama Perangkat</label>
+                    <select id="nama" name="nama" required>
+                        <option value="">-- Pilih Nama --</option>
+                        </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" name="status" required>
+                        <option value="">-- Pilih Status --</option>
+                        <option value="Hadir">Hadir</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                        <option value="Alpha">Alpha</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="waktu">Tanggal & Waktu</label>
+                    <input type="text" id="waktu" name="waktu" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lokasi">Koordinat GPS</label>
+                    <input type="text" id="lokasi" name="lokasi" readonly placeholder="Mencari lokasi...">
+                </div>
+
+                <div class="camera-section">
+                    <label>Selfie Wajib</label>
+                    <video id="video-preview" playsinline autoplay muted></video>
+                    <canvas id="canvas"></canvas>
+                    <button type="button" id="capture-btn" class="btn btn-secondary">Ambil Selfie</button>
+                    <img id="selfie-preview" alt="Pratinjau Selfie">
+                    <div id="camera-permission-alert" class="notification error"></div>
+                </div>
+
+                <input type="hidden" id="photo-data" name="photo-data">
+                
+                <button type="submit" class="btn btn-main">Simpan Absensi</button>
+            </form>
+        </section>
+
+        <section class="recap-section">
+            <h2>Rekap Absensi</h2>
+            <div class="filter-controls">
+                <select id="filter-bulan" title="Filter berdasarkan bulan"></select>
+                <select id="filter-nama" title="Filter berdasarkan nama"></select>
+                <button id="print-btn" class="btn btn-print">Cetak Rekap Bulan Ini</button>
+            </div>
+            <div class="table-container">
+                <table id="recap-table">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Nama</th>
+                            <th>Waktu</th>
+                            <th>Status</th>
+                            <th>Lokasi (Lat,Lon)</th>
+                            <th>Foto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recap-body">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- KONFIGURASI ---
+        const NAMA_PERANGKAT = [
+            "Ahmad Subarjo", "Budi Santoso", "Citra Lestari", "Dewi Anggraini", "Eko Prasetyo",
+            "Fitriani", "Gunawan", "Herlina", "Indra Wijaya", "Joko Susilo"
+        ];
+
+        // --- REFERENSI ELEMEN DOM ---
+        const form = document.getElementById('attendance-form');
+        const namaSelect = document.getElementById('nama');
+        const waktuInput = document.getElementById('waktu');
+        const lokasiInput = document.getElementById('lokasi');
+        const statusSelect = document.getElementById('status');
+        const video = document.getElementById('video-preview');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const selfiePreview = document.getElementById('selfie-preview');
+        const photoDataInput = document.getElementById('photo-data');
+        const recapBody = document.getElementById('recap-body');
+        const filterBulan = document.getElementById('filter-bulan');
+        const filterNama = document.getElementById('filter-nama');
+        const printBtn = document.getElementById('print-btn');
+        const cameraAlert = document.getElementById('camera-permission-alert');
+        
+        let stream = null; // Variabel untuk menyimpan stream kamera
+
+        // --- FUNGSI UTAMA ---
+
+        /**
+         * Inisialisasi halaman: mengisi dropdown, mengatur tanggal, 
+         * meminta akses, dan memuat data absensi.
+         */
+        function initialize() {
+            populateNamaDropdown();
+            setInterval(updateWaktu, 1000);
+            startCamera();
+            getGeolocation();
+            loadAttendanceData();
+            setupEventListeners();
+        }
+
+        /**
+         * Mengisi dropdown nama perangkat dari array konfigurasi.
+         */
+        function populateNamaDropdown() {
+            NAMA_PERANGKAT.forEach(nama => {
+                const option = document.createElement('option');
+                option.value = nama;
+                option.textContent = nama;
+                namaSelect.appendChild(option);
+            });
+        }
+        
+        /**
+         * Memperbarui input waktu setiap detik.
+         */
+        function updateWaktu() {
+            const now = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            waktuInput.value = now.toLocaleDateString('id-ID', options);
+        }
+
+        /**
+         * Meminta akses kamera depan dan menampilkannya di elemen video.
+         */
+        async function startCamera() {
+            try {
+                // Meminta akses kamera depan (user-facing)
+                const constraints = { 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                cameraAlert.style.display = 'none';
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                cameraAlert.textContent = "Error: Kamera tidak dapat diakses. Pastikan Anda memberikan izin akses kamera di browser Anda.";
+                cameraAlert.style.display = 'block';
+                // Nonaktifkan fungsionalitas kamera jika gagal
+                captureBtn.disabled = true;
+                captureBtn.textContent = 'Kamera Tidak Tersedia';
+            }
+        }
+
+        /**
+         * Meminta akses lokasi GPS pengguna.
+         */
+        function getGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lon = position.coords.longitude.toFixed(6);
+                        lokasiInput.value = `${lat}, ${lon}`;
+                    },
+                    (error) => {
+                        console.error("Error getting location:", error);
+                        lokasiInput.value = "Lokasi tidak diizinkan";
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                lokasiInput.value = "Geolocation tidak didukung";
+            }
+        }
+
+        /**
+         * Mengambil gambar dari video dan menampilkannya sebagai pratinjau.
+         */
+        function captureSelfie() {
+            if (!stream) {
+                alert("Kamera belum siap atau tidak diizinkan.");
+                return;
+            }
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            // Membalik gambar secara horizontal agar seperti cermin
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // Kualitas 80%
+            photoDataInput.value = dataUrl;
+            selfiePreview.src = dataUrl;
+            selfiePreview.style.display = 'block';
+            alert('Selfie berhasil diambil!');
+        }
+
+        /**
+         * Meng-handle submit form absensi.
+         * @param {Event} e - Event object.
+         */
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            // Validasi
+            if (!namaSelect.value || !statusSelect.value || !photoDataInput.value) {
+                alert("Harap lengkapi semua data: Nama, Status, dan ambil foto selfie.");
+                return;
+            }
+
+            const newEntry = {
+                id: Date.now(),
+                nama: namaSelect.value,
+                waktu: new Date().toISOString(), // Simpan dalam format ISO untuk sorting
+                status: statusSelect.value,
+                lokasi: lokasiInput.value,
+                foto: photoDataInput.value
+            };
+
+            const attendanceData = getAttendanceDataFromStorage();
+            attendanceData.push(newEntry);
+            saveAttendanceDataToStorage(attendanceData);
+            
+            alert('Absensi berhasil disimpan!');
+            
+            // Render ulang tabel dan reset form
+            renderTable(attendanceData);
+            resetForm();
+        }
+
+        /**
+         * Mereset form ke kondisi awal setelah submit.
+         */
+        function resetForm() {
+            form.reset();
+            selfiePreview.style.display = 'none';
+            selfiePreview.src = '';
+            photoDataInput.value = '';
+            getGeolocation(); // Ambil ulang lokasi untuk absensi berikutnya
+        }
+        
+        /**
+         * Mengambil data absensi dari localStorage.
+         * @returns {Array} - Array data absensi.
+         */
+        function getAttendanceDataFromStorage() {
+            return JSON.parse(localStorage.getItem('attendanceData')) || [];
+        }
+
+        /**
+         * Menyimpan data absensi ke localStorage.
+         * @param {Array} data - Array data absensi untuk disimpan.
+         */
+        function saveAttendanceDataToStorage(data) {
+            localStorage.setItem('attendanceData', JSON.stringify(data));
+        }
+
+        /**
+         * Memuat data absensi dan menampilkannya di tabel serta mengisi filter.
+         */
+        function loadAttendanceData() {
+            const data = getAttendanceDataFromStorage();
+            renderTable(data);
+            populateFilterOptions(data);
+        }
+
+        /**
+         * Merender data absensi ke dalam tabel HTML.
+         * @param {Array} data - Data absensi untuk ditampilkan.
+         */
+        function renderTable(data) {
+            recapBody.innerHTML = ''; // Kosongkan tabel
+            if (data.length === 0) {
+                recapBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Belum ada data absensi.</td></tr>';
+                return;
+            }
+            
+            // Urutkan data dari yang terbaru
+            const sortedData = data.sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
+            
+            sortedData.forEach((entry, index) => {
+                const tr = document.createElement('tr');
+                const waktuFormatted = new Date(entry.waktu).toLocaleString('id-ID');
+                const statusClass = `status-${entry.status.toLowerCase()}`;
+                
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${entry.nama}</td>
+                    <td>${waktuFormatted}</td>
+                    <td class="${statusClass}">${entry.status}</td>
+                    <td>${entry.lokasi}</td>
+                    <td><img src="${entry.foto}" alt="Foto ${entry.nama}" class="recap-photo"></td>
+                `;
+                recapBody.appendChild(tr);
+            });
+        }
+        
+        /**
+         * Mengisi opsi pada filter bulan dan nama berdasarkan data yang ada.
+         * @param {Array} data - Seluruh data absensi.
+         */
+        function populateFilterOptions(data) {
+            // Filter Bulan
+            const months = new Set();
+            data.forEach(entry => {
+                const date = new Date(entry.waktu);
+                // Format: YYYY-MM (misal: 2025-06)
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                months.add(monthKey);
+            });
+            
+            filterBulan.innerHTML = '<option value="">Semua Bulan</option>';
+            months.forEach(month => {
+                const option = document.createElement('option');
+                const [year, monthNum] = month.split('-');
+                const monthName = new Date(year, monthNum - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+                option.value = month;
+                option.textContent = monthName;
+                filterBulan.appendChild(option);
+            });
+
+            // Filter Nama
+            const names = new Set(data.map(e => e.nama));
+            filterNama.innerHTML = '<option value="">Semua Nama</option>';
+            NAMA_PERANGKAT.forEach(nama => {
+                const option = document.createElement('option');
+                option.value = nama;
+                option.textContent = nama;
+                filterNama.appendChild(option);
+            });
+        }
+        
+        /**
+         * Menerapkan filter yang dipilih ke tabel.
+         */
+        function applyFilters() {
+            const selectedMonth = filterBulan.value;
+            const selectedName = filterNama.value;
+            let data = getAttendanceDataFromStorage();
+
+            if (selectedMonth) {
+                data = data.filter(entry => {
+                    const date = new Date(entry.waktu);
+                    const entryMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    return entryMonth === selectedMonth;
+                });
+            }
+
+            if (selectedName) {
+                data = data.filter(entry => entry.nama === selectedName);
+            }
+            
+            renderTable(data);
+        }
+
+        /**
+         * Memanggil fungsi print bawaan browser.
+         */
+        function printTable() {
+            const selectedMonth = filterBulan.value;
+            if (!selectedMonth) {
+                alert("Silakan pilih bulan yang ingin dicetak terlebih dahulu.");
+                return;
+            }
+            
+            // Simpan filter nama sementara, terapkan filter bulan, lalu cetak
+            const tempNameFilter = filterNama.value;
+            filterNama.value = ""; // Kosongkan filter nama untuk mencetak semua orang di bulan itu
+            applyFilters();
+            
+            // Beri sedikit waktu agar DOM diperbarui sebelum mencetak
+            setTimeout(() => {
+                const monthName = filterBulan.options[filterBulan.selectedIndex].text;
+                document.title = `Rekap Absensi - ${monthName}`; // Ubah judul dokumen untuk cetak
+                window.print();
+                document.title = "Sistem Absensi Perangkat Desa"; // Kembalikan judul
+                
+                // Kembalikan filter nama setelah cetak
+                filterNama.value = tempNameFilter;
+                applyFilters();
+            }, 500);
+        }
+
+        /**
+         * Mengatur semua event listener untuk elemen interaktif.
+         */
+        function setupEventListeners() {
+            captureBtn.addEventListener('click', captureSelfie);
+            form.addEventListener('submit', handleFormSubmit);
+            filterBulan.addEventListener('change', applyFilters);
+            filterNama.addEventListener('change', applyFilters);
+            printBtn.addEventListener('click', printTable);
+        }
+
+        // Jalankan inisialisasi saat halaman dimuat
+        initialize();
+    });
+    </script>
+
+</body>
+</html>
